@@ -26,7 +26,13 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+    runtime: nvidia
   web:
     image: nginx:alpine
     container_name: social-web
