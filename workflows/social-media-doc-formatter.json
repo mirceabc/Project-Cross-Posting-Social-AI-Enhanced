@@ -1,0 +1,114 @@
+{
+  "id": "wf_social_media_formatter",
+  "name": "Social Media Document Formatter",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "social-media-doc-formatter",
+        "responseMode": "lastNode",
+        "options": {
+          "binaryData": true
+        }
+      },
+      "id": "f0a1d730-c2ef-4bbb-ae00-1f34d6beab01",
+      "name": "Webhook Upload",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        220
+      ],
+      "webhookId": "social-media-doc-formatter"
+    },
+    {
+      "parameters": {
+        "jsCode": "const pdfParse = require('pdf-parse');\nconst mammoth = require('mammoth');\nconst XLSX = require('xlsx');\n\nconst body = $json.body ?? $json;\nconst binaries = $binary || {};\n\nif (!Object.keys(binaries).length) {\n  throw new Error('Nu au fost primite fisiere.');\n}\n\nfunction normalizeText(value) {\n  return String(value || '')\n    .replace(/\\r/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .trim();\n}\n\nasync function extractByType(binaryKey, file) {\n  const name = file.fileName || 'fisier-fara-nume';\n  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';\n  const mime = (file.mimeType || '').toLowerCase();\n  const buffer = await this.helpers.getBinaryDataBuffer(0, binaryKey);\n\n  if (ext === 'txt' || ext === 'md' || mime.includes('text/plain')) {\n    return buffer.toString('utf8');\n  }\n\n  if (ext === 'pdf' || mime.includes('pdf')) {\n    const data = await pdfParse(buffer);\n    return data.text || '';\n  }\n\n  if (ext === 'docx' || mime.includes('wordprocessingml')) {\n    const out = await mammoth.extractRawText({ buffer });\n    return out.value || '';\n  }\n\n  if (ext === 'doc' || mime.includes('msword')) {\n    return buffer.toString('utf8');\n  }\n\n  if (ext === 'xlsx' || ext === 'xls' || ext === 'csv' || mime.includes('sheet') || mime.includes('csv')) {\n    const wb = XLSX.read(buffer, { type: 'buffer' });\n    const sheets = wb.SheetNames.map((sheetName) => {\n      const ws = wb.Sheets[sheetName];\n      const csv = XLSX.utils.sheet_to_csv(ws);\n      return '# Sheet: ' + sheetName + '\\n' + csv;\n    });\n    return sheets.join('\\n\\n');\n  }\n\n  return buffer.toString('utf8');\n}\n\nconst docs = [];\nfor (const [binaryKey, file] of Object.entries(binaries)) {\n  const extracted = await extractByType.call(this, binaryKey, file);\n  const cleaned = normalizeText(extracted);\n\n  docs.push({\n    binaryKey,\n    fileName: file.fileName || binaryKey,\n    mimeType: file.mimeType || 'unknown',\n    chars: cleaned.length,\n    text: cleaned.slice(0, 4000),\n  });\n}\n\nconst combinedText = docs\n  .map((doc, idx) => '## Document ' + (idx + 1) + ': ' + doc.fileName + '\\n' + doc.text)\n  .join('\\n\\n---\\n\\n')\n  .slice(0, 12000);\n\nconst settings = {\n  tone: body.tone || 'profesionist',\n  language: body.language || 'romana',\n  audience: body.audience || 'public general',\n  platforms: body.platforms || 'Instagram, Facebook',\n  model: body.model || 'qwen2.5:7b',\n};\n\nconst prompt = [\n  'Esti un social media strategist senior. Primesti idei brute din documente si le transformi in continut gata de publicare.',\n  'Raspunzi EXCLUSIV JSON valid, fara markdown, fara explicatii in afara JSON-ului.',\n  '',\n  'Creeaza rezultat in limba ' + settings.language + ', ton ' + settings.tone + ', public tinta ' + settings.audience + ', platforme ' + settings.platforms + '.',\n  '',\n  'Reguli obligatorii lungime caption:',\n  '- Instagram max 2200',\n  '- Facebook max 63206',\n  '- LinkedIn max 3000',\n  '- TikTok max 2200',\n  '- X max 280',\n  '',\n  'Cerinta variatii:',\n  '- Pentru FIECARE platforma inclusa, genereaza EXACT 2 variante: variantA si variantB.',\n  '',\n  'Text extras din documente:',\n  combinedText,\n  '',\n  'Schema JSON OBLIGATORIE:',\n  '{',\n  '  \"summary\": \"rezumat strategic 2-4 fraze\",',\n  '  \"posts\": [',\n  '    {',\n  '      \"platform\": \"Instagram\",',\n  '      \"variantA\": {',\n  '        \"caption\": \"text complet postare\",',\n  '        \"hashtags\": [\"#tag1\", \"#tag2\"],',\n  '        \"cta\": \"apel la actiune\",',\n  '        \"visualIdea\": \"idee vizuala\"',\n  '      },',\n  '      \"variantB\": {',\n  '        \"caption\": \"text complet postare alternativa\",',\n  '        \"hashtags\": [\"#tag1\", \"#tag2\"],',\n  '        \"cta\": \"apel la actiune alternativa\",',\n  '        \"visualIdea\": \"idee vizuala alternativa\"',\n  '      }',\n  '    }',\n  '  ],',\n  '  \"calendar\": [',\n  '    {',\n  '      \"day\": \"Luni\",',\n  '      \"time\": \"18:00\",',\n  '      \"platform\": \"Instagram\",',\n  '      \"topic\": \"tema\"',\n  '    }',\n  '  ]',\n  '}',\n].join('\\n');\n\nreturn [{\n  json: {\n    settings,\n    documents: docs.map((d) => ({\n      fileName: d.fileName,\n      mimeType: d.mimeType,\n      chars: d.chars,\n    })),\n    combinedText,\n    prompt,\n  },\n}];"
+      },
+      "id": "f05587df-9195-4f67-a23f-054e8e09dde8",
+      "name": "Extract Document Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -740,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: $json.settings.model || $env.OLLAMA_MODEL || 'qwen2.5:7b', stream: false, format: 'json', options: { temperature: 0.3, num_predict: 350 }, prompt: $json.prompt } }}",
+        "options": {}
+      },
+      "id": "e2fa3800-4f97-4141-a91e-b8b1f977ec95",
+      "name": "Format With Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -500,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $items('Extract Document Text', 0, 0)[0].json;\nconst data = $json;\n\nconst PLATFORM_LIMITS = {\n  Instagram: 2200,\n  Facebook: 63206,\n  LinkedIn: 3000,\n  TikTok: 2200,\n  X: 280,\n};\n\nfunction asArray(input) {\n  return Array.isArray(input) ? input : [];\n}\n\nfunction cleanText(value) {\n  return String(value || '').replace(/\\s+/g, ' ').trim();\n}\n\nfunction clampCaption(platform, caption) {\n  const max = PLATFORM_LIMITS[platform] || 2200;\n  const normalized = cleanText(caption);\n  if (normalized.length <= max) return normalized;\n  return normalized.slice(0, Math.max(0, max - 3)).trim() + '...';\n}\n\nfunction normalizeVariant(platform, variant) {\n  const value = variant || {};\n  return {\n    caption: clampCaption(platform, value.caption),\n    hashtags: asArray(value.hashtags).map((tag) => cleanText(tag)).filter(Boolean),\n    cta: cleanText(value.cta),\n    visualIdea: cleanText(value.visualIdea),\n  };\n}\n\nfunction buildPlainTextExport(formatted, settings) {\n  const lines = [];\n  lines.push('=== SOCIAL MEDIA READY COPY ===');\n  lines.push('Ton: ' + settings.tone);\n  lines.push('Limba: ' + settings.language);\n  lines.push('Audienta: ' + settings.audience);\n  lines.push('Platforme: ' + settings.platforms);\n  lines.push('Model: ' + settings.model);\n  lines.push('');\n\n  if (formatted.summary) {\n    lines.push('REZUMAT STRATEGIC');\n    lines.push(formatted.summary);\n    lines.push('');\n  }\n\n  for (const post of asArray(formatted.posts)) {\n    lines.push('PLATFORMA: ' + (post.platform || 'General'));\n    lines.push('Limita caption: ' + (PLATFORM_LIMITS[post.platform] || 2200));\n    lines.push('');\n\n    lines.push('Varianta A');\n    lines.push(post.variantA?.caption || '');\n    lines.push('Hashtags: ' + (post.variantA?.hashtags || []).join(' '));\n    lines.push('CTA: ' + (post.variantA?.cta || ''));\n    lines.push('Vizual: ' + (post.variantA?.visualIdea || ''));\n    lines.push('');\n\n    lines.push('Varianta B');\n    lines.push(post.variantB?.caption || '');\n    lines.push('Hashtags: ' + (post.variantB?.hashtags || []).join(' '));\n    lines.push('CTA: ' + (post.variantB?.cta || ''));\n    lines.push('Vizual: ' + (post.variantB?.visualIdea || ''));\n    lines.push('');\n    lines.push('----------------------------------------');\n    lines.push('');\n  }\n\n  if (asArray(formatted.calendar).length) {\n    lines.push('CALENDAR PROPUS');\n    for (const item of formatted.calendar) {\n      lines.push('- ' + (item.day || 'Zi') + ' ' + (item.time || '') + ' | ' + (item.platform || 'Platforma') + ' | ' + (item.topic || 'Tema'));\n    }\n  }\n\n  return lines.join('\\n').trim();\n}\n\nif (data.error) {\n  throw new Error('Ollama error: ' + data.error);\n}\n\nlet rawText = '';\nif (typeof data.response === 'string' && data.response.trim()) {\n  rawText = data.response.trim();\n}\n\nif (!rawText && typeof data.output_text === 'string' && data.output_text.trim()) {\n  rawText = data.output_text.trim();\n}\n\nif (!rawText) {\n  throw new Error('Modelul AI nu a returnat continut text. Verifica modelul Ollama.');\n}\n\nlet formatted = null;\nconst cleaned = rawText\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/, '')\n  .trim();\n\ntry {\n  formatted = JSON.parse(cleaned);\n} catch (error) {\n  formatted = null;\n}\n\nif (!formatted || !Array.isArray(formatted.posts)) {\n  const platforms = String(source.settings.platforms || 'Instagram, Facebook')\n    .split(',')\n    .map((item) => cleanText(item))\n    .filter(Boolean);\n\n  const seed = cleanText(rawText).slice(0, 1000) || 'Idee de postare social media';\n\n  formatted = {\n    summary: cleanText(rawText).slice(0, 350),\n    posts: platforms.map((platform) => ({\n      platform,\n      variantA: {\n        caption: clampCaption(platform, seed + ' (varianta A)'),\n        hashtags: ['#socialmedia', '#marketing'],\n        cta: 'Scrie-ne pentru detalii.',\n        visualIdea: 'Cadru simplu cu mesaj principal si branding.',\n      },\n      variantB: {\n        caption: clampCaption(platform, seed + ' (varianta B)'),\n        hashtags: ['#content', '#business'],\n        cta: 'Comenteaza daca vrei varianta personalizata.',\n        visualIdea: 'Carousel cu beneficii cheie.',\n      },\n    })),\n    calendar: [],\n  };\n}\n\nformatted.posts = formatted.posts.map((post) => {\n  const platform = cleanText(post.platform) || 'Instagram';\n  return {\n    platform,\n    variantA: normalizeVariant(platform, post.variantA),\n    variantB: normalizeVariant(platform, post.variantB),\n  };\n});\n\nconst plainText = buildPlainTextExport(formatted, source.settings);\n\nreturn [{\n  json: {\n    status: 'ok',\n    source: {\n      files: source.documents,\n      settings: source.settings,\n    },\n    formatted,\n    exports: {\n      plainText,\n    },\n    rawText,\n  },\n}];"
+      },
+      "id": "467fcacc-c22a-48d4-b314-0f5528ca0f95",
+      "name": "Build Web Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -260,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Upload": {
+      "main": [
+        [
+          {
+            "node": "Extract Document Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Document Text": {
+      "main": [
+        [
+          {
+            "node": "Format With Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format With Ollama": {
+      "main": [
+        [
+          {
+            "node": "Build Web Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "018c7f85-8da2-478d-a851-bf9e2a16ef92",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "social-media-doc-formatter-template"
+  },
+  "pinData": {}
+}

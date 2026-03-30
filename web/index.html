@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Social Post Formatter AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+
+    <main class="layout">
+      <section class="card intro">
+        <p class="eyebrow">n8n + AI Agent</p>
+        <h1>Transforma documente in postari social media</h1>
+        <p>
+          Incarca ideile tale din fisiere TXT, PDF, Word sau Excel, iar agentul AI le
+          converteste in postari gata de publicare.
+        </p>
+      </section>
+
+      <section class="card form-card">
+        <form id="formatterForm">
+          <label>
+            Webhook URL n8n
+            <input
+              id="webhookUrl"
+              name="webhookUrl"
+              type="url"
+              value="http://localhost:5678/webhook/social-media-doc-formatter"
+              required
+            />
+          </label>
+
+          <div class="grid-2">
+            <label>
+              Ton de comunicare
+              <select name="tone">
+                <option value="profesionist">Profesionist</option>
+                <option value="prietenos">Prietenos</option>
+                <option value="educativ">Educativ</option>
+                <option value="indraznet">Indraznet</option>
+              </select>
+            </label>
+
+            <label>
+              Limba
+              <select name="language">
+                <option value="romana">Romana</option>
+                <option value="engleza">Engleza</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            Model Ollama
+            <select name="model">
+              <option value="qwen2.5:7b" selected>qwen2.5:7b (calitate mai buna)</option>
+              <option value="qwen2.5:3b">qwen2.5:3b (mai rapid)</option>
+              <option value="llama3.1:8b">llama3.1:8b</option>
+            </select>
+          </label>
+
+          <label>
+            Public tinta
+            <input name="audience" type="text" placeholder="Ex: antreprenori locali, 25-45" />
+          </label>
+
+          <label>
+            Platforme tintite
+            <div class="chips">
+              <label><input type="checkbox" name="platform" value="Instagram" checked /> Instagram</label>
+              <label><input type="checkbox" name="platform" value="Facebook" checked /> Facebook</label>
+              <label><input type="checkbox" name="platform" value="LinkedIn" /> LinkedIn</label>
+              <label><input type="checkbox" name="platform" value="TikTok" /> TikTok</label>
+              <label><input type="checkbox" name="platform" value="X" /> X</label>
+            </div>
+          </label>
+
+          <label>
+            Fisiere idei (multiple)
+            <input
+              id="documents"
+              name="documents"
+              type="file"
+              multiple
+              accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv"
+              required
+            />
+            <small>Formate acceptate: TXT, PDF, DOC/DOCX, XLS/XLSX, CSV</small>
+          </label>
+
+          <button id="submitBtn" type="submit">Genereaza postari ready-to-publish</button>
+        </form>
+      </section>
+
+      <section class="card output-card">
+        <div class="output-header">
+          <h2>Rezultat AI</h2>
+          <span id="statusPill" class="pill neutral">In asteptare</span>
+        </div>
+        <div class="output-actions">
+          <button id="viewTextBtn" class="tab-btn active" type="button">Text Ready</button>
+          <button id="viewMarkdownBtn" class="tab-btn" type="button">Markdown</button>
+          <button id="viewJsonBtn" class="tab-btn" type="button">JSON</button>
+          <button id="copyTextBtn" class="copy-btn" type="button">Copiaza Text</button>
+          <button id="copyMarkdownBtn" class="copy-btn" type="button">Copiaza Markdown</button>
+        </div>
+        <pre id="resultText">Rezultatul text ready-to-publish va aparea aici dupa procesare.</pre>
+        <article id="resultMarkdown" class="markdown-output hidden">Rezultatul Markdown va aparea aici daca este generat de AI.</article>
+        <pre id="resultJson" class="hidden">JSON-ul structurii va aparea aici.</pre>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

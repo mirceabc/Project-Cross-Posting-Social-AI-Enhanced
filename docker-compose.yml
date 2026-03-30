@@ -1,14 +1,41 @@
 services:
   n8n:
-    image: n8nio/n8n:latest
+    build:
+      context: .
+      dockerfile: n8n/Dockerfile
     container_name: n8n
     restart: unless-stopped
     ports:
       - "5678:5678"
     env_file:
       - .env
+    environment:
+      - NODE_FUNCTION_ALLOW_EXTERNAL=pdf-parse,mammoth,xlsx
+      - NODE_PATH=/usr/local/lib/node_modules
+    depends_on:
+      - ollama
     volumes:
       - n8n_data:/home/node/.n8n
+      - ./workflows:/files/workflows:ro
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  web:
+    image: nginx:alpine
+    container_name: social-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
 
 volumes:
   n8n_data:
+  ollama_data:
