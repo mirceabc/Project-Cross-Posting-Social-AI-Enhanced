@@ -46,15 +46,20 @@ docker compose up -d --build
 ```
 
 3. Descarca modelul Ollama local (prima data dureaza):
-
-```bash
+   
+# Modelul principal (calitate bună):
+```
 docker compose exec ollama ollama pull qwen2.5:7b
 ```
 
-Optional, pentru viteza mai mare poti adauga si modelul 3b:
-
-```bash
+# Model rapid (opțional):
+```
 docker compose exec ollama ollama pull qwen2.5:3b
+```
+
+# Model alternativ (llama3.1:8b, dacă vrei să testezi și cu acesta):
+```
+docker compose exec ollama ollama pull llama3.1:8b
 ```
 
 Interfete disponibile:
